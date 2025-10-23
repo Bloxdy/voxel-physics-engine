@@ -9,6 +9,8 @@ export class RigidBody {
     autoStep: boolean;
     airDrag: number;
     fluidDrag: number;
+    fluidDragVert: number; // BLOXD CHANGE
+    fluidDragHoriz: number; // BLOXD CHANGE
     onStep: any;
     velocity: any;
     resting: number[];
