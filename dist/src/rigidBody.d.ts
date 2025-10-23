@@ -13,6 +13,10 @@ export class RigidBody {
     velocity: any;
     resting: number[];
     inFluid: boolean;
+    alwaysApplyHorizFriction: boolean; // BLOXD CHANGE
+    preventFallOffEdge: boolean; // BLOXD CHANGE
+    slideOnCollision: boolean; // BLOXD CHANGE
+    rolledBackLastTick: boolean; // BLOXD CHANGE
     /** @internal */
     _ratioInFluid: number;
     /** @internal */
