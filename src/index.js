@@ -213,7 +213,7 @@ function iterateBody(self, b, dt, noGravity) {
     }
 
     // sweeps aabb along dx and accounts for collisions
-    processCollisions(self, b.aabb, dx, b.resting, b.slideOnCollision)
+    processCollisions(self, b, b.aabb, dx, b.resting, b.slideOnCollision) // Bloxd change - pass body to processCollisions
 
     // if autostep, and on ground, run collisions again with stepped up aabb
     if (b.autoStep) {
@@ -363,9 +363,10 @@ var lateralVel = vec3.create()
 */
 
 // sweep aabb along velocity vector and set resting vector
-function processCollisions(self, box, velocity, resting, slideOnCollision) {
+function processCollisions(self, b, box, velocity, resting, slideOnCollision) {
     vec3.set(resting, 0, 0, 0)
-    return sweep(self.testSolid, box, velocity, function (dist, axis, dir, vec) {
+    var getVoxels = getSolidFunction(self, b) // Bloxd change - getSolidFunction for body-specific solidity checks
+    return sweep(getVoxels, box, velocity, function (dist, axis, dir, vec) {
         resting[axis] = dir
         vec[axis] = 0
         if (!slideOnCollision) { // Bloxd change - this is useful for e.g. arrow hitting terrain
@@ -408,7 +409,8 @@ function tryAutoStepping(self, b, oldBox, dx) {
     vec3.add(targetPos, oldBox.base, dx)
 
     // move towards the target until the first X/Z collision
-    var getVoxels = self.testSolid
+    // Bloxd change - getSolidFunction for body-specific solidity checks
+    var getVoxels = getSolidFunction(self, b) 
     sweep(getVoxels, oldBox, dx, function (dist, axis, dir, vec) {
         if (axis === 1) vec[axis] = 0
         else return true
@@ -429,7 +431,7 @@ function tryAutoStepping(self, b, oldBox, dx) {
     // now move in X/Z however far was left over before hitting the obstruction
     vec3.subtract(leftover, targetPos, oldBox.base)
     leftover[1] = 0
-    processCollisions(self, oldBox, leftover, tmpResting, true)
+    processCollisions(self, b, oldBox, leftover, tmpResting, true) 
 
     // bail if no movement happened in the originally blocked direction
     var xMovedToTarget = equals(oldBox.base[0], targetPos[0])
@@ -440,10 +442,10 @@ function tryAutoStepping(self, b, oldBox, dx) {
     // oldBox is now at the target autostepped position. 
     // Check there is a block under the new position as it is possible to go diagonally off a block and not be standing on anything
     var moveIsBad = true
-    moveIsBad = moveIsBad && !solidBlockUnderPos(self, oldBox.base[0]+1e-5, oldBox.base[1], oldBox.base[2]+1e-5) // bot left
-    moveIsBad = moveIsBad && !solidBlockUnderPos(self, oldBox.max[0]-1e-5, oldBox.base[1], oldBox.base[2]+1e-5) // bot right
-    moveIsBad = moveIsBad && !solidBlockUnderPos(self, oldBox.base[0]+1e-5, oldBox.base[1], oldBox.max[2]-1e-5) // top left
-    moveIsBad = moveIsBad && !solidBlockUnderPos(self, oldBox.max[0]-1e-5, oldBox.base[1], oldBox.max[2]-1e-5) // top right
+    moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, oldBox.base[0]+1e-5, oldBox.base[1], oldBox.base[2]+1e-5) // bot left
+    moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, oldBox.max[0]-1e-5, oldBox.base[1], oldBox.base[2]+1e-5) // bot right
+    moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, oldBox.base[0]+1e-5, oldBox.base[1], oldBox.max[2]-1e-5) // top left
+    moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, oldBox.max[0]-1e-5, oldBox.base[1], oldBox.max[2]-1e-5) // top right
     if (moveIsBad) {
         return
     }
@@ -472,10 +474,10 @@ function tryPreventFallOffEdge(self, b, dx, preventFallResting) {
         compWiseDx[i] = dx[i]
 
         var moveIsBad = true
-        moveIsBad = moveIsBad && !solidBlockUnderPos(self, t.base[0]+compWiseDx[0]+1e-5, t.base[1], t.base[2]+compWiseDx[2]+1e-5) // bot left
-        moveIsBad = moveIsBad && !solidBlockUnderPos(self, t.max[0]+compWiseDx[0]-1e-5, t.base[1], t.base[2]+compWiseDx[2]+1e-5) // bot right
-        moveIsBad = moveIsBad && !solidBlockUnderPos(self, t.base[0]+compWiseDx[0]+1e-5, t.base[1], t.max[2]+compWiseDx[2]-1e-5) // top left
-        moveIsBad = moveIsBad && !solidBlockUnderPos(self, t.max[0]+compWiseDx[0]-1e-5, t.base[1], t.max[2]+compWiseDx[2]-1e-5) // top right
+        moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, t.base[0]+compWiseDx[0]+1e-5, t.base[1], t.base[2]+compWiseDx[2]+1e-5) // bot left
+        moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, t.max[0]+compWiseDx[0]-1e-5, t.base[1], t.base[2]+compWiseDx[2]+1e-5) // bot right
+        moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, t.base[0]+compWiseDx[0]+1e-5, t.base[1], t.max[2]+compWiseDx[2]-1e-5) // top left
+        moveIsBad = moveIsBad && !solidBlockUnderPos(self, b, t.max[0]+compWiseDx[0]-1e-5, t.base[1], t.max[2]+compWiseDx[2]-1e-5) // top right
 
         if (moveIsBad) {
             preventFallResting[i] = dx[i] > 0 ? 1 : -1
@@ -483,13 +485,26 @@ function tryPreventFallOffEdge(self, b, dx, preventFallResting) {
         }
         else if (i === 0) {
             vec3.set(preventFallXPush, dx[0], 0, 0)
-            processCollisions(self, t, preventFallXPush, preventFallResting, b.slideOnCollision)
+            processCollisions(self, b, t, preventFallXPush, preventFallResting, b.slideOnCollision) // Bloxd change - pass body to processCollisions
         }
     }
 }
 
-function solidBlockUnderPos(self, x, y, z) {
-    return self.testSolid(Math.floor(x), Math.floor(y-1), Math.floor(z))
+function getSolidFunction(self, b) {
+    if (!b.testSolid) {
+        // Cache function so it doesn't have to be recreated every function call
+        b.testSolid = (x, y, z) => {
+            if (b.floatingLocalYValue !== null && y === b.floatingLocalYValue) {
+                return true
+            }
+            return self.testSolid(x, y, z)
+        }
+    }
+    return b.testSolid
+}
+
+function solidBlockUnderPos(self, b, x, y, z) {
+    return getSolidFunction(self, b)(Math.floor(x), Math.floor(y-1), Math.floor(z))
 }
 
 
@@ -507,7 +522,8 @@ function bodyAsleep(self, body, dt, noGravity) {
     var isResting = false
     var gmult = 0.5 * dt * dt * body.gravityMultiplier
     vec3.scale(sleepVec, self.gravity, gmult)
-    sweep(self.testSolid, body.aabb, sleepVec, function () {
+    var getVoxels = getSolidFunction(self, body)
+    sweep(getVoxels, body.aabb, sleepVec, function () {
         isResting = true
         return true
     }, true)
