@@ -30,11 +30,14 @@ export class RigidBody {
         this.alwaysApplyHorizFriction = false
         this.slideOnCollision = true
         this.rolledBackLastTick = false
+        this.floatingLocalYValue = null
 
         // internal state
         this.velocity = vec3.create()
         this.resting = [0, 0, 0]
         this.inFluid = false
+
+        this.testSolid = null
 
         // internals
         /** @internal */
@@ -66,6 +69,8 @@ export class RigidBody {
 
         this.preventFallOffEdge = loadFrom.preventFallOffEdge
         this.rolledBackLastTick = loadFrom.rolledBackLastTick
+
+        this.floatingLocalYValue = loadFrom.floatingLocalYValue
     
         vec3.copy(this.velocity, loadFrom.velocity)
         vec3.copy(this.resting, loadFrom.resting)

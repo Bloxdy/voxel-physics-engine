@@ -19,6 +19,7 @@ export class RigidBody {
     preventFallOffEdge: boolean; // BLOXD CHANGE
     slideOnCollision: boolean; // BLOXD CHANGE
     rolledBackLastTick: boolean; // BLOXD CHANGE
+    floatingLocalYValue: number | null; // BLOXD CHANGE
     /** @internal */
     _ratioInFluid: number;
     /** @internal */
