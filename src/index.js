@@ -494,7 +494,7 @@ function getSolidFunction(self, b) {
     if (!b.testSolid) {
         // Cache function so it doesn't have to be recreated every function call
         b.testSolid = (x, y, z) => {
-            if (b.floatingLocalYValue !== null && y === b.floatingLocalYValue) {
+            if (b.floatingLocalYValue !== null && y <= b.floatingLocalYValue) {
                 return true
             }
             return self.testSolid(x, y, z)
